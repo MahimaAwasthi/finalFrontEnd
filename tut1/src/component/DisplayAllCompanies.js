@@ -7,25 +7,30 @@ import Logout from "./Logout"
 const DisplayAllCompanies = ()=> {
     const [companyDetail,setAllCompanies] = useState([])
     const [updatedCompanyDetail,setUpdatedCompanyDetail] = useState({companyName:"",technicalRequirement:"",experience:"",packageOffered:""})
+    const [totalPages,setTotalPages] = useState()
+    const [activePage,setActivePage] = useState(0)
     const [isEditEnable,setIsEditEnable] = useState()
+    const liIndices = Array.from({ length : totalPages }, (_, index) => index + 1);
     const handleChange = (e) => {
         setUpdatedCompanyDetail({...updatedCompanyDetail, [e.target.name]: e.target.value})
         console.log(updatedCompanyDetail)
       };
 
         useEffect(()=> {
-        axios.get("http://localhost:8081/company/showAllCompanies",{headers:{
+        axios.get(`http://localhost:8081/company/showAllCompanies/${activePage}/10`,{headers:{
             'Authorization': `Bearer ${localStorage.getItem("jwtToken")}`
         }}).then((res)=> {
             console.log(res.data)
             // for(let i =0;i<res.data.length;i++){
             // console.log(res.data[i])
-            setAllCompanies(res.data)
+            setAllCompanies(res.data.companyProfileEntityList)
+            setTotalPages(res.data.totalPages)
+            console.log(totalPages)
             // }
         }).catch((err) => {
             console.log(err)
         })
-    },[companyDetail.length])
+    },[companyDetail.length,activePage])
     const headers = ['ID', 'Company Name', 'Technical Requirement','Experience','Package Offered'];
 const updateDetails = (e) => {
     axios.put(`http://localhost:8081/company/modifyCompanyProfile/${isEditEnable}`,updatedCompanyDetail,{
@@ -33,8 +38,15 @@ const updateDetails = (e) => {
             'Authorization': `Bearer ${localStorage.getItem("jwtToken")}`
         }
     }).then((res) => {
-        window.location.reload()
+        setAllCompanies(companyDetail.map((company) => {
+            if(company.id === isEditEnable) {
+                return {...res.data,id:isEditEnable}
+            }
+            return company
+        }))
         console.log(res.data)
+        console.log(companyDetail)
+        console.log(isEditEnable)
         setIsEditEnable()
     }).catch((err)=> {
         console.log(err)
@@ -105,10 +117,11 @@ return(
              <td><InputField className="form-control" type="text" name="experience" placeholder="Experience"  onChange={handleChange} value={isEditEnable === comp.id ? updatedCompanyDetail.experience :comp.experience} disabled={isEditEnable === comp.id ? false : true}/></td>
              <td><InputField className="form-control" type="text" name="packageOffered" placeholder="Package Offered"  onChange={handleChange} value={isEditEnable === comp.id ? updatedCompanyDetail.packageOffered :comp.packageOffered} disabled={isEditEnable === comp.id ? false : true}/></td>
              <td> <input type="submit" className="btn btn-outline-danger" value="Delete" onClick={(e)=> {
+                e.preventDefault()
                 axios.delete(`http://localhost:8081/company/deleteCompanyProfile/${comp.id}`,{headers: {
                     'Authorization': `Bearer ${localStorage.getItem("jwtToken")}`
                 }}).then((res) => {
-                    window.location.reload()
+                    setAllCompanies(companyDetail.splice(comp.id,1))
                     console.log(res.data)
                 }).catch((e)=> {
                     console.log(e)
@@ -129,6 +142,23 @@ return(
     </tbody>
   </table>
 </div>
+<nav aria-label="Page navigation example">
+    {console.log(activePage)}
+  <ul class="pagination">
+    {
+liIndices.map((index) => {
+    return(
+    <>
+    <li class="page-item"><button type="submit" onClick={(e)=> {
+        setActivePage(index-1)
+    }} class="page-link">{index}</button></li>
+    </>
+    )
+})
+ 
+}
+  </ul>
+</nav>
 </>
 )
 }
